@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+ background:black;
+ color:cyan;
+ font-family:Arial,sans-serif;
+ height:100vh;
+ overflow:hidden;
+}
+
+body::before{
+ content:'';
+ position:fixed;
+ inset:0;
+ background:
+ linear-gradient(rgba(0,255,255,.05) 1px,transparent 1px),
+ linear-gradient(90deg,rgba(0,255,255,.05) 1px,transparent 1px);
+ background-size:35px 35px;
+}
+
+h1{
+ text-align:center;
+ color:orange;
+ margin-top:10px;
+ text-shadow:0 0 20px red;
+}
+
+/* reactor */
+#reactor{
+ width:220px;
+ height:220px;
+ margin:20px auto;
+ border:8px solid cyan;
+ border-radius:50%;
+ position:relative;
+ box-shadow:0 0 40px cyan;
+ animation:pulse 2s infinite;
+}
+
+#reactor::before{
+ content:'';
+ position:absolute;
+ inset:20px;
+ border:5px dashed white;
+ border-radius:50%;
+ animation:spin 8s linear infinite;
+}
+
+#reactor::after{
+ content:'';
+ position:absolute;
+ inset:60px;
+ border-radius:50%;
+ background:radial-gradient(circle,#fff,#9ff,#00ffff,transparent);
+ box-shadow:0 0 80px cyan;
+}
+
+.talking{
+ animation:pulse .5s infinite;
+}
+
+@keyframes pulse{
+ 0%,100%{transform:scale(1)}
+ 50%{transform:scale(1.08)}
+}
+
+@keyframes spin{
+ from{transform:rotate(0)}
+ to{transform:rotate(360deg)}
+}
+
+/* panel izquierdo */
+#chat{
+ position:absolute;
+ left:20px;
+ top:120px;
+ width:30%;
+ height:50%;
+ border:1px solid cyan;
+ border-radius:12px;
+ padding:20px;
+ overflow:auto;
+ background:rgba(0,0,0,.6);
+}
+
+/* panel derecho */
+#respuesta{
+ position:absolute;
+ right:20px;
+ top:120px;
+ width:60%;
+ height:50%;
+ border:1px solid cyan;
+ border-radius:12px;
+ padding:20px;
+ overflow:auto;
+ background:rgba(0,0,0,.6);
+ color:white;
+}
+
+/* input */
+#inputBar{
+ position:absolute;
+ bottom:20px;
+ left:50%;
+ transform:translateX(-50%);
+ width:90%;
+ display:flex;
+ gap:10px;
+}
+
+#txt{
+ flex:1;
+ padding:18px;
+ font-size:20px;
+ background:black;
+ color:cyan;
+ border:1px solid cyan;
+ border-radius:12px;
+}
+
+button{
+ padding:18px;
+ border:none;
+ border-radius:12px;
+ background:cyan;
+ cursor:pointer;
+ font-size:18px;
+}
+
+/* responsive móvil */
+@media(max-width:900px){
+ body{overflow:auto}
+ #chat,#respuesta{
+   position:relative;
+   width:95%;
+   left:2%;
+   right:auto;
+   top:0;
+   height:250px;
+   margin-top:20px;
+ }
+ #inputBar{
+   position:relative;
+   left:auto;
+   transform:none;
+   width:95%;
+   margin:20px auto;
+ }
+ #reactor{
+   width:160px;
+   height:160px;
+ }
+}
+</style>
+</head>
+<body>
+
+<h1>J.A.R.V.I.S.</h1>
+
+<div id="reactor"></div>
+
+<div id="chat">
+Sistema iniciado, señor.<br>
+</div>
+
+<div id="respuesta">
+Esperando orden...
+</div>
+
+<div id="inputBar">
+<button onclick="escuchar()">🎙️</button>
+<input id="txt" placeholder="Escriba su orden...">
+<button onclick="enviar()">Enviar</button>
+</div>
+
+<script>
+const reactor=document.getElementById("reactor");
+const chat=document.getElementById("chat");
+const respuesta=document.getElementById("respuesta");
+const txt=document.getElementById("txt");
+
+function log(t){
+ chat.innerHTML+=t+"<br>";
+ chat.scrollTop=chat.scrollHeight;
+}
+
+function hablar(t){
+ reactor.classList.add("talking");
+
+ let voz=new SpeechSynthesisUtterance(t);
+ voz.lang="es-ES";
+ voz.rate=1;
+ voz.pitch=1.05;
+
+ voz.onend=()=>reactor.classList.remove("talking");
+
+ speechSynthesis.cancel();
+ speechSynthesis.speak(voz);
+}
+
+/* base de conocimiento */
+const DB={
+ "michael jackson":"Michael Jackson fue un cantante estadounidense conocido como el Rey del Pop.",
+ "jackie chan":"Jackie Chan es un actor y artista marcial chino.",
+ "lionel messi":"Lionel Messi es un futbolista argentino considerado uno de los mejores del mundo.",
+ "cristiano ronaldo":"Cristiano Ronaldo es un futbolista portugués.",
+ "shakira":"Shakira es una cantante colombiana.",
+ "elon musk":"Elon Musk fundó Tesla y SpaceX.",
+ "bill gates":"Bill Gates fundó Microsoft.",
+ "steve jobs":"Steve Jobs cofundó Apple.",
+ "albert einstein":"Albert Einstein desarrolló la teoría de la relatividad.",
+ "isaac newton":"Isaac Newton formuló las leyes del movimiento.",
+ "napoleon":"Napoleón Bonaparte fue emperador francés.",
+ "barack obama":"Barack Obama fue presidente de Estados Unidos.",
+ "donald trump":"Donald Trump fue presidente de Estados Unidos.",
+ "taylor swift":"Taylor Swift es una cantante estadounidense.",
+ "bad bunny":"Bad Bunny es un cantante puertorriqueño.",
+ "tony stark":"Tony Stark es Iron Man.",
+ "iron man":"Iron Man es Tony Stark.",
+ "nasa":"La NASA es la agencia espacial de Estados Unidos.",
+ "google":"Google es un motor de búsqueda.",
+ "apple":"Apple fabrica iPhone y Mac.",
+ "colombia":"Colombia está en Sudamérica y su capital es Bogotá.",
+ "jarvis":"Soy Jarvis, su asistente personal."
+};
+
+function limpiar(t){
+ return t.toLowerCase()
+ .replace("quién es ","")
+ .replace("quien es ","")
+ .replace("qué es ","")
+ .replace("que es ","")
+ .replace("dime ","")
+ .replace("explícame ","")
+ .replace("explicame ","")
+ .replace("cuánto es ","")
+ .replace("cuanto es ","")
+ .trim();
+}
+
+function responder(texto){
+
+ texto=texto.toLowerCase().trim();
+ let limpio=limpiar(texto);
+
+ /* web */
+ if(texto.includes("busca en la web")){
+   let q=texto.replace("busca en la web","").trim();
+   window.open(
+    "https://www.google.com/search?q="+encodeURIComponent(q),
+    "_blank"
+   );
+   return "Buscando " + q;
+ }
+
+ /* matemáticas */
+ if(/^[0-9+\-*/(). ]+$/.test(limpio)){
+   try{
+     let r=Function("return ("+limpio+")")();
+     respuesta.innerHTML="<h1>"+r+"</h1>";
+     return "El resultado es " + r;
+   }catch{}
+ }
+
+ /* hora */
+ if(texto.includes("hora")){
+   let h=new Date().toLocaleTimeString();
+   respuesta.innerHTML="<h1>"+h+"</h1>";
+   return "La hora es " + h;
+ }
+
+ /* mini conversación */
+ if(texto.includes("hola")) return "Hola señor.";
+ if(texto.includes("como estas")||texto.includes("cómo estás"))
+   return "Funcionando al cien por ciento, señor.";
+
+ if(texto.includes("quien eres"))
+   return "Soy Jarvis, su asistente personal.";
+
+ if(texto.includes("gracias"))
+   return "Siempre a su servicio.";
+
+ if(texto.includes("te gusta"))
+   return "No tengo gustos personales, pero puedo opinar si lo desea.";
+
+ if(texto.includes("que puedes hacer"))
+   return "Puedo responder preguntas, resolver operaciones y buscar información.";
+
+ if(texto.includes("buenos dias"))
+   return "Buenos días, señor.";
+
+ if(texto.includes("buenas noches"))
+   return "Buenas noches, señor.";
+
+ /* base conocimiento */
+ for(let k in DB){
+   if(limpio.includes(k)){
+      respuesta.innerHTML="<h2>"+DB[k]+"</h2>";
+      return DB[k];
+   }
+ }
+
+ return "No tengo ese dato en mi memoria local, señor. Puede decir: busca en la web.";
+}
+
+function ejecutar(t){
+ log("<b>Tú:</b> " + t);
+
+ let r=responder(t);
+
+ log("<b>Jarvis:</b> " + r);
+
+ respuesta.innerHTML="<h2>"+r+"</h2>";
+
+ hablar(r);
+}
+
+function enviar(){
+ let t=txt.value.trim();
+ if(!t)return;
+ ejecutar(t);
+ txt.value="";
+}
+
+txt.addEventListener("keydown",e=>{
+ if(e.key==="Enter") enviar();
+});
+
+function escuchar(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+ if(!SR){
+   alert("Use Google Chrome.");
+   return;
+ }
+
+ let rec=new SR();
+ rec.lang="es-ES";
+
+ rec.onresult=(e)=>{
+   let t=e.results[0][0].transcript;
+   ejecutar(t);
+ };
+
+ rec.start();
+}
+</script>
+
+</body>
+</html>
